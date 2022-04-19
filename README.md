@@ -75,7 +75,7 @@ The scene selection buttons are the ones in the right-most column on your Launch
 
 ### Create a new empty pattern by holding 'user' and pressing an empty pattern
 
-### Sync pattern changes to your beat by holding the 'keys' button
+### Sync pattern changes to your beat by toggling the 'keys' button
 
 
 
