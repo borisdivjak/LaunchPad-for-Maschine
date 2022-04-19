@@ -66,14 +66,16 @@ with the active patterns blinking white.
 
 Whenever you make any changes in the software or using another controller, you should update the LaunchPad with the 'session' button.
  
-### Turn patterns on/off by pressing individual pattern pads
+### Activate patterns by pressing individual pattern pads
+
+### Mute patterns / groups by pressing an empty pattern pad
 
 ### Activate all patterns in a row by pressing the 'scene selection' buttons 
 The scene selection buttons are the ones in the right-most column on your LaunchPad. They are most likely labelled with right-pointing arrows.
 
 ### Create a new empty pattern by holding 'user' and pressing an empty pattern
 
-### Align pattern changes to your beat by holding the 'keys' button
+### Sync pattern changes to your beat by holding the 'keys' button
 
 
 
