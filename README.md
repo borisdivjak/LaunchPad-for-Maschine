@@ -53,10 +53,14 @@ Additional hosts could be supported with minimal tweaks to the code.
 
 In Maschine, make sure that you have the 'ideas' view open and that your list of patterns is clearly visible on the screen.
 When using the plug-in version, swithch to 'medium' or 'large' view (in the Maschine plugin, select the dropdown and then View > Medium).
-The script also assumes that the 'browser'/'library' is open in Maschine, although the script can easily be edited to change this
-if you prefer using Maschine with the browser collapsed (try changing the property `firstx` to 32 in the script).
 
 Make sure your LaunchPad is in "Programmer" mode – see instructions above.
+
+### Overview of the function buttons on the LaunchPad (only works in 'programmer' mode)
+
+<img width="546" alt="Screenshot 2022-04-28 at 20 32 52" src="https://user-images.githubusercontent.com/5494990/165734059-8a55b3c2-f05b-4a3d-8722-8677ba795293.png">
+
+Note that these buttons might have different names on LaunchPad X and LaunchPad Pro Mk3.
 
 ### Press the "session" button to load the current Maschine patterns onto your LaunchPad
 
@@ -73,16 +77,25 @@ Whenever you make any changes in the software or using another controller, you s
 ### Activate all patterns in a row by pressing the 'scene selection' buttons 
 The scene selection buttons are the ones in the right-most column on your LaunchPad. They are most likely labelled with right-pointing arrows.
 
-### Create a new empty pattern by holding 'user' and pressing an empty pattern
+### Create a new empty pattern by holding 'drums' and pressing an empty pattern
 
 ### Sync pattern changes to your beat by toggling the 'keys' button
+Press the keys button once to turn beat sync on (the button starts to blink) then again to turn it off. When in beat sync mode, the patterns will change according to the 'perform grid' setting in Maschine. You can change this setting to '1 bar' if you want your patterns to change at the end of a sigle bar, or 'scene' if you prefer them to change when the entire pattern/scene has played out.
 
 
 
 # Using this script with other LaunchPads
 
-Buttons are labelled differently
-For Mk2 devices - not sure, but probably the top row uses different CC numbers
+I was only able to test this script with my LaunchPad Mini Mk3, so I can't guarantee that it will work with other devices. 
+
+Having said that, it should work with LaunchPad X or LaucnhPad Pro MK3, provided you enable the 'programmer' mode on those devices (check the manual). Note that some buttons on these devices might be labeled differently to the ones on LP Mini Mk3.
+
+It should be possible to modify the script to work with the Mk2 series of LaunchPads, but I don't have one and can't try this out. You'll probably have to change the assigned values for some the LaunchPad pads and buttons as these assignments have been changed in the Mk3 series.
+
 
 # Known issues and limitations
 
+- Only works on a Mac
+- You'll need to make sure that the patterns are visible on your screen
+- You need to keep Maschine (the software) in 'ideas' mode
+- Only works up to 8 patterns in each of the first 8 instrument groups
