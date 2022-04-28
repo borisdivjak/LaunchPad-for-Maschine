@@ -1,52 +1,53 @@
-# This is a MidiPipe AppleScript for MacOS that enables Native Instruments Maschine 2 users to use a 
-# Novation LaunchPad MK3 Mini to control patterns and loops in Maschine.
+# This is a MidiPipe AppleScript for MacOS that enables Native Instruments 
+# Maschine 2 users to use a Novation LaunchPad MK3 Mini to control patterns 
+# and loops in Maschine.
 #
-# When pads on the LaunchPad Mini are pressed, they are passed as MIDI messages through MidiPipe 
-# (http://www.subtlesoft.square7.net/MidiPipe.html) to this script that translates those messages 
-# into mouse movements and clicks to control Maschine. 
+# When pads on the LaunchPad Mini are pressed, they are passed as 
+# MIDI messages through MidiPipe (http://www.subtlesoft.square7.net/MidiPipe.html) 
+# to this script that translates those messages into mouse movements and clicks 
+# to control Maschine. 
 #
-# The script uses a command line utility called 'Cliclick' (https://github.com/BlueM/cliclick)to
-# control the mouse clicks as well as MacOS's own 'screencapture' to read the status of the patterns
-# and other interface elements in Maschine
+# The script uses 'Cliclick'(https://github.com/BlueM/cliclick), 
+# a command line utility to control mouse clicks as well as MacOS's own 'screencapture' 
+# to read the status of the patterns and other interface elements in Maschine
 #
 # This script was inspired by a hack posted by D-One on the Native Instruments forum:
 # https://www.native-instruments.com/forum/threads/kinda-hacked-machine-ideas-view-for-external-midi-pattern-selection.316506/
 #
 # Check the GitHub page for more detail and instructions
 
+use framework "Foundation"
+use scripting additions
 
-property firstx : 357 # 'x' where patterns start in Maschine ÐÊchange to 32 if instrument browser is closed
-property firsty : 110 # 'y' where patterns start in Maschine
+property firstx : 356 # 'x' where patterns start in Maschine
+property firstx_no_browser : 30 # with instrument browser closed
+property firsty : 80 # 'y' where patterns start in Maschine
 property dx : 99 # width of pattern slots in Maschine
 property dy : 22 # height of pattern slots in Maschine
-property paddingx_logic : 5
-property paddingy_logic : 65 # assuming the plugin window header is not collapsed
-property paddingx_live : 0
-property paddingy_live : -10
 
 property active : 3 # LaunchPad intentisty to use for active patterns
 property inactive : 1 # LaunchPad intentisty to use for inactive patterns
-property user_pad : false # state of 'user' pad on LaunchPad Ð false until pressed
-property keys_pad : false # state of 'keys' pad on LaunchPad Ð false until pressed
-
-# by default the 'programmer mode' is used on LaunchPad MK3
-# change 'legacy' to true for MK2 or if using legacy mode on MK3
-property legacy : false
+property session_pad : false # state of 'session' pad on LaunchPad â€“ false until pressed
+property drums_pad : false # state of 'drums' pad on LaunchPad â€“ false until pressed
+property keys_pad : false # state of 'keys' pad on LaunchPad â€“ false until pressed
+property user_pad : false # state of 'user' pad on LaunchPad â€“ false until pressed
 
 # properties that store whether maschine is used standalone or as VST in Logic / Live
 # these are automatically set when 'session' is pressed
 property maschine_app : false
-property maschine_logic : false
-property maschine_live : false
+property maschine_plug : 0
+property maschine_plug_options : {"Live", "Logic Pro X"}
 
-# you may wish to run the patterns in monochrome / grayscale Ð if so, set this to true
+# you may wish to run the patterns in monochrome / grayscale â€“ if so, set this to true
 property grayscale : false
+property gray_inactive : 103 # LP color used for inactive state in grayscale mode
 
 # mapping of pads on LaunchPad - starting with top left corner and going row by row
 property padNumbers : {{81, 82, 83, 84, 85, 86, 87, 88}, {71, 72, 73, 74, 75, 76, 77, 78}, {61, 62, 63, 64, 65, 66, 67, 68}, {51, 52, 53, 54, 55, 56, 57, 58}, {41, 42, 43, 44, 45, 46, 47, 48}, {31, 32, 33, 34, 35, 36, 37, 38}, {21, 22, 23, 24, 25, 26, 27, 28}, {11, 12, 13, 14, 15, 16, 17, 18}}
 
-# mapping of pads on LaunchPad for legacy mode
-property padNumbersLegacy : {{64, 65, 66, 67, 96, 97, 98, 99}, {60, 61, 62, 63, 92, 93, 94, 95}, {56, 57, 58, 59, 88, 89, 90, 91}, {52, 53, 54, 55, 84, 85, 86, 87}, {48, 49, 50, 51, 80, 81, 82, 83}, {44, 45, 46, 47, 76, 77, 78, 79}, {40, 41, 42, 43, 72, 73, 74, 75}, {36, 37, 38, 39, 68, 69, 70, 71}}
+# mapping of LauchPad buttons in top row
+property ctrlButtons : {91, 92, 93, 94, 95, 96, 97, 98}
+
 
 # these propeties will store current state of maschine patterns and scenes:
 
@@ -57,8 +58,181 @@ property selected_pattern : {0, 0}
 # used to store current state of LaunchPad colors
 property mas_pattern_colors : {{0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0}}
 
+# used to store position of maschine window
+property maschine_x : -1
+property maschine_y : -1
+property maschine_sizex : -1
+property maschine_sizey : -1
+property paddingx : 0
+property paddingy : 0
+property browser_on : true # status of instrument browser â€“ checked automatically
+
+# used to store timestamp (to check time between events)
+property lasttime : 0
+
+
 
 # collection of helper handlers/functions:
+
+
+# handler sinceLastTime()
+# retrieves current timestamp and stores it in the property lasttime
+# returns time since last time this handler was called in milliseconds
+# if update is true then updates the lasttime property with new time
+
+on sinceLastTime(update)
+	set now to current application's class "NSDate"'s |date|()
+	set dateFormatter to current application's class "NSDateFormatter"'s new()
+	tell dateFormatter to setDateFormat:("HH mm ss SSS")
+	set timeStamp to (dateFormatter's stringFromDate:(now)) as text
+	
+	# convert all to milliseconds
+	set x to word 4 of timeStamp
+	set x to x + (word 3 of timeStamp) * 1000
+	set x to x + (word 2 of timeStamp) * 1000 * 60
+	set x to x + (word 1 of timeStamp) * 1000 * 60 * 60
+	
+	set dif to x - lasttime
+	if update then set lasttime to x
+	return dif
+end sinceLastTime
+
+
+# ------------------------------------------------------------
+
+# handler list2string(theList, theDelimiter)
+# turn an applsecript list into text (string) separated by the delimiter
+
+on list2string(theList, theDelimiter)
+	
+	-- First, we store in a variable the current delimiter to restore it later
+	set theBackup to AppleScript's text item delimiters
+	
+	-- Set the new delimiter
+	set AppleScript's text item delimiters to theDelimiter
+	
+	-- Perform the conversion
+	set theString to theList as string
+	
+	-- Restore the original delimiter
+	set AppleScript's text item delimiters to theBackup
+	
+	return theString
+	
+end list2string
+
+
+# ------------------------------------------------------------
+
+# handler screenGrab(x, y, sizex, sizey)
+# do a screengrab and save in temp file
+# to be used in combination with pixelStream handler â€“ see below
+
+on screenGrab(x, y, sizex, sizey)
+	# only do anything if maschine is open	
+	if maschine_app or (maschine_plug > 0) then
+		# bring window to front so we can take screengrab â€“Â either maschine app or plugin host
+		if maschine_app then activate application "Maschine 2"
+		
+		# for some reason the below line doesn't work well with Live - so keeping it as comment
+		# if maschine_plug > 0 then activate application (item maschine_plug of maschine_plug_options)
+		
+		# always measure grab from top left corner of maschine window
+		set x to x + maschine_x - 1
+		set y to y + maschine_y - 1
+		try
+			set output to do shell script "screencapture -x -R" & x & "," & y & "," & sizex & "," & sizey & " -t bmp $TMPDIR/maschineLP.bmp"
+		end try
+	end if
+end screenGrab
+
+
+# ------------------------------------------------------------
+
+# handler pixelStream(x, y, sizex, sizey, options)
+# return stream of pixels from the caputred BMP ($TMPDIR/maschineLP.bmp)
+# - does't do the capture itelf - to capture see 'screenGrab' above
+# - coordinates refer to the captured image, not the edge of the screen
+# - options specify a selection pattern - format {includex, gapx, includey, gapy} or leave empty for all {}
+
+on pixelStream(x, y, sizex, sizey, options)
+	set output to do shell script "od -An -t dI -j 10 -N 32 -v $TMPDIR/maschineLP.bmp"
+	
+	# get offset to start of pixel array from the BMP file
+	set bmp_offset to (word 1 of output) as integer
+	set bmp_width to (word 3 of output) as integer
+	set bmp_height to (word 4 of output) as integer
+	# note that the height in BMP is negative to indicite top to bottom progression
+	# but the word operator strips the negative sign away
+	
+	# if we're asking for something out of bounds of the image, return nothing
+	if (bmp_width < (x + sizex - 1)) or (bmp_height < (y + sizey - 1)) then return ""
+	
+	# check if retina then double pixel size of patterns		
+	set dpi to word 8 of output
+	if dpi = "5669" then
+		set pixel_size to 2
+		set awk_filter_retina to " | awk '{print $2, $4}'" # grab every second pixel
+	else
+		set pixel_size to 1
+		set awk_filter_retina to " | awk '{print $1, $2, $3, $4}'" # grab every pixel
+	end if
+	
+	if options is {} then
+		set includex to sizex
+		set gapx to 0
+		set includey to sizey
+		set gapy to 0
+	else
+		set includex to item 1 of options
+		set gapx to item 2 of options
+		set includey to item 3 of options
+		set gapy to item 4 of options
+	end if
+	
+	
+	# caluculate where we need to start grabbing pixels - which line	
+	set bytes_per_pixel to pixel_size * 4
+	set bytes_per_row to bmp_width * bytes_per_pixel
+	set bmp_offset to bmp_offset + (y - 1) * bytes_per_row
+	
+	# we'll store the shell commands to extract pixel values from bmp here
+	# writing it all as one long pipe call so it executes faster
+	set commands to ""
+	
+	repeat with gridy from 1 to sizey by (includey + gapy)
+		repeat with iy from gridy to (gridy + includey - 1)
+			
+			# offset from start of pixel array to where the next line begins
+			set array_offset to (iy - 1) * bytes_per_row + (x - 1) * bytes_per_pixel
+			
+			# use od to grab a line of pixels (byte length sizex * bytes_per_pixel)
+			# we're executing these commands in parallel (using the & operator) so they're faster
+			set commands to commands & "( od -t xI -j " & (bmp_offset + array_offset) & " -N " & sizex * bytes_per_pixel & " -v $TMPDIR/maschineLP.bmp | grep '.*' --line-buffered ) & "
+		end repeat
+	end repeat
+	
+	# if pattern options are specified add one more command to filter each line
+	# to find the right pixels â€“ grab 'includex' pixels, then skip 'gapx' then grab 'includex' then skip ...
+	# and repeat until the end		
+	if options is {} then
+		set awk_filter_x to ""
+	else
+		# this will filter the appropriate pixels on the horizontal axis
+		set awk_filter_x to " | awk '(FNR-1) % " & (includex + gapx) & " < " & includex & "'"
+	end if
+	
+	# exectue commands to grab all the image pixels
+	# sort -k1 sorts the output into the right order as we're executing reads in parallel to be faster
+	# awk -v OFS='\\n' '{$1=$1}1' puts each pixel in a new line - one pixel per line
+	# awk 'NF'removes any blank lines
+	set pixels to do shell script "{ " & commands & " } | sort -k1" & awk_filter_retina & " | awk -v OFS='\\n' '{$1=$1}1' | awk 'NF'" & awk_filter_x
+	
+	return pixels
+end pixelStream
+
+
+# ------------------------------------------------------------
 
 # handler rgbToHue(r, g, b)
 # return hue from rgb colours - from 0-360
@@ -73,7 +247,7 @@ on rgbToHue(r, g, b)
 	set b to b / 255
 	
 	# R is highest
-	if (r ³ g and r ³ b) then
+	if (r â‰¥ g and r â‰¥ b) then
 		if (g > b) then
 			set min to b
 		else
@@ -83,7 +257,7 @@ on rgbToHue(r, g, b)
 	end if
 	
 	# G is highest
-	if (g > r and g ³ b) then
+	if (g > r and g â‰¥ b) then
 		if (r > b) then
 			set min to b
 		else
@@ -139,7 +313,8 @@ end rgbToIntensity
 
 on rgbToLPcolor(r, g, b)
 	# round hue to scale of 0-13	
-	set hue to round (rgbToHue(r, g, b) / 25.714 - 0.5)
+	set hue to rgbToHue(r, g, b) / 25.714 - 0.5
+	set hue to round hue
 	set intensity to rgbToIntensity(r, g, b)
 	
 	if intensity = 0 then
@@ -184,7 +359,7 @@ end setLPintensity
 
 # ------------------------------------------------------------
 
-# handler setLPcolor
+# handler setLPcolor(padx, pady, LPcolor)
 # returns MIDI message (list of 3 numbers) to send to Launchpad to turn a pad into a specific color
 
 on setLPcolor(padx, pady, LPcolor)
@@ -198,7 +373,7 @@ on setLPcolor(padx, pady, LPcolor)
 	end if
 	
 	# otherwise use normal static color
-	if grayscale and intensity is inactive then set LPcolor to 103 # for grayscale mode
+	if grayscale and intensity is inactive then set LPcolor to gray_inactive # for grayscale mode
 	return {144, padNumber, LPcolor}
 end setLPcolor
 
@@ -206,7 +381,7 @@ end setLPcolor
 # ------------------------------------------------------------
 
 # handler getLPpadXY(midi_note)
-# paramter is midi_note as single number Ð i.e. byte two of the midi note on message
+# paramter is midi_note as single number â€“ i.e. byte two of the midi note on message
 # returns x and y coordinates of the pad corresponding the the given midi note
 
 on getLPpadXY(midi_note)
@@ -217,6 +392,53 @@ on getLPpadXY(midi_note)
 	end repeat
 	return {0, 0}
 end getLPpadXY
+
+
+# ------------------------------------------------------------
+
+# handler showLPControlButtons()
+# lights up the relevant buttons in LaunchPad's top row
+# i.e. 'session', 'keys' and 'user'
+# returns MIDI message to send to LaunchPad
+
+on showControlButtons()
+	set LPcolor_inactive to 11 # dim orange
+	set LPcolor_active to 3 # white
+	if grayscale then set LPcolor_inactive to gray_inactive
+	
+	# set 'session' button	
+	if session_pad is true then
+		set msg to {176, item 5 of ctrlButtons, 3}
+	else
+		set msg to {176, item 5 of ctrlButtons, 1}
+	end if
+	
+	# set 'drums' button
+	if drums_pad is true then
+		set msg to msg & {176, item 6 of ctrlButtons, 5} # lights up red 
+	else
+		set msg to msg & {176, item 6 of ctrlButtons, LPcolor_inactive}
+	end if
+	
+	# set 'keys' button - active and inactive variation
+	if keys_pad is true then
+		set msg to msg & {178, item 7 of ctrlButtons, LPcolor_active}
+	else
+		# use message 178 for a pulsating color
+		set msg to msg & {176, item 7 of ctrlButtons, LPcolor_inactive}
+	end if
+	
+	# set 'user' button
+	if user_pad is true then
+		set msg to msg & {176, item 8 of ctrlButtons, LPcolor_active}
+	else
+		set msg to msg & {176, item 8 of ctrlButtons, LPcolor_inactive}
+	end if
+	
+	return msg
+	
+end showControlButtons
+
 
 
 # ------------------------------------------------------------
@@ -248,64 +470,174 @@ end fromHex
 
 # handler findMaschineInstances()
 # checks for standalone or plug-in instances and stores state in appropriate properties
+# return 0 if nothing found, 1 if same position / size as before and 2 if anything changed
 
 on findMaschineInstances()
+	set status to 0
+	set {old_maschine_x, old_maschine_y} to {maschine_x, maschine_y}
+	set {old_sizex, old_sizey} to {maschine_sizex, maschine_sizey}
+	set {maschine_x, maschine_y} to {-1, -1}
+	
 	tell application "System Events"
-		# check if maschine standalone app is running	
+		
+		# APP - check if maschine standalone app is running	
 		set maschine_app to (name of processes) contains "Maschine 2"
+		set maschine_plug to 0 # reset the plugin status property
 		
-		# check if maschine plugin window is open in Logic Pro or Ableton
-		set maschine_logic to false
-		set maschine_live to false
-		if ((name of processes) contains "Logic Pro X") then
-			set maschine_logic to ((count of (windows of process "Logic Pro X" whose name contains "maschine")) is not 0)
+		if maschine_app then
+			set {maschine_x, maschine_y} to position of first window of process "Maschine 2"
+			set {maschine_sizex, maschine_sizey} to size of first window of process "Maschine 2"
+			
+		else
+			
+			# PLUG-IN - if not the app, then check if a plugin version is open		
+			repeat with i from 1 to count of maschine_plug_options
+				set host_app to item i of maschine_plug_options
+				if ((name of processes) contains item i of maschine_plug_options) Â¬
+					and (count of (windows of process host_app Â¬
+					whose name contains "maschine")) is not 0 then
+					
+					set maschine_plug to i
+					set {maschine_x, maschine_y} to position of (first item of (windows of process host_app whose name contains "maschine"))
+					set {maschine_sizex, maschine_sizey} to size of (first item of (windows of process host_app whose name contains "maschine"))
+				end if
+			end repeat
 		end if
-		if ((name of processes) contains "Live") then
-			set maschine_live to ((count of (windows of process "Live" whose name contains "maschine")) is not 0)
-		end if
-		
 	end tell
+	
+	if maschine_app or (maschine_plug > 0) then set status to 1
+	if {old_maschine_x, old_maschine_y, old_sizex, old_sizey} is not Â¬
+		{maschine_x, maschine_y, maschine_sizex, maschine_sizey} then set status to 2
+	return status
+	
 end findMaschineInstances
 
 
 # ------------------------------------------------------------
 
+# handler getMaschineInnerPosition()
+# takes a screengrab of the left top corner of Maschine and finds 
+# the detailed position of the inner window â€“ this is important
+# as the window header and borders can have a different size depending
+# on the host when maschine is used as a plugin
+#
+# we also check for the instrument 'browser' â€“ if this is open the pattern 
+# position is different
+#
+# sets properties paddingx, paddingy and browser_on
+
+
+on getMaschineInnerPosition()
+	# check if app or plugin window present
+	if maschine_app or (maschine_plug > 0) then
+		
+		# set coordinates for a vertical slice/screenshot to check where maschine window begins
+		# if it's the app we have a bit more certainty so tighter parameters
+		if maschine_app then # if maschine app
+			set v_slice_start to 28
+			set v_slice_height to 18
+			
+			# if full-screen - then the starting edge is at the very top
+			if (maschine_x = 0) and (maschine_y = 0) then set v_slice_start to 1
+
+		else # if maschine plugin
+			set v_slice_start to 10
+			set v_slice_height to 120
+		end if
+		
+		# find position for first screengrab - to assess the height of the window header
+		set width to 245
+		if maschine_sizex < 1305 then set width to 92 # if smaller window / logo collapsed
+		
+		# capture the screenshot
+		screenGrab(1, v_slice_start, width, v_slice_height)
+		# get a vertical slice of pixels just above the 'browser' icon - to identify where the window header ends
+		set x to width
+		set y to 1
+		set pixels to pixelStream(x, 1, 1, v_slice_height, {})
+		set pixels to list2string(paragraphs of pixels, "")
+		
+		# signature to look for â€“ 3 black pixels + 4 grey
+		set signature to "ff000000ff000000ff000000ff5e5e5eff585858ff575757ff565656"
+		
+		# find top offset â€“ how many pixels below window header does maschine actually begin
+		set paddingy to -1
+		repeat with i from 1 to (((count of pixels) - (count of signature)) / 8)
+			set char_i to ((i - 1) * 8 + 1)
+			set pixel_group to text char_i thru (char_i + (count of signature) - 1) of pixels
+			if pixel_group begins with signature then set paddingy to i
+		end repeat
+		
+		# check if 'browser' icon is on
+		# start by selecting the group of pixels around the icon
+		set char_i to ((paddingy - 1) * 8 + 1)
+		set pixel_group to text char_i thru (char_i + 15 * 8) of pixels
+		
+		# then check if any of them are white - and set the browser_on accordingly
+		set browser_on to (pixel_group contains "ffffffff" or pixel_group contains "fffefefe")
+		
+		# with the next screengrab assess if any padding on the left of the window
+		# check the pixels just above the logo on the left edge
+		set x to 1
+		set y to paddingy + 5
+		set pixels to pixelStream(x, y, 20, 1, {})
+		set pixels to list2string(paragraphs of pixels, "")
+		
+		# signature to look for â€“ 2 black pixels + 4 grey
+		set signature to "ff000000ff000000ff565656ff575757ff575757ff575757"
+		
+		# find left offset â€“ how manyve border pixels does the window have
+		set paddingx to -1
+		repeat with i from 1 to (((count of pixels) - (count of signature)) / 8)
+			set char_i to ((i - 1) * 8 + 1)
+			set pixel_group to text char_i thru (char_i + (count of signature) - 1) of pixels
+			if pixel_group begins with signature then set paddingx to i
+		end repeat
+		
+		# add the initial offset to padding
+		set paddingy to paddingy + v_slice_start - 1
+		
+	end if
+end getMaschineInnerPosition
+
+
+# ------------------------------------------------------------
+
+# handler getMaschineBrowserStatus()
+# returns true if browser on and false if not
+# also sets the browser_on property
+
+on getMaschineBrowserStatus()
+	if maschine_app or (maschine_plug > 0) then
+		# find position for first screengrab - to assess the height of the window header
+		set x to 246
+		if maschine_sizex < 1305 then set x to 93 # if smaller window / logo collapsed
+		screenGrab(paddingx + x, paddingy + 18, 10, 10)
+		set pixels to pixelStream(1, 1, 1, 1, {})
+		set browser_on to false
+		if pixels is "ffffffff" then set browser_on to true
+		return browser_on
+	end if
+	return false
+end getMaschineBrowserStatus
+
+# ------------------------------------------------------------
+
 # handler getMaschinePatternsPosition()
-# returns the starting X and Y for maschine patterns relative to screen
-# note that the starting point needs to be inside the patternÊ
+# returns the starting X and Y for maschine patterns relative to maschine window
+# note that the starting point needs to be inside the patternÂ 
 # (the color of the starting pixel will represent the first pattern)
 
 on getMaschinePatternsPosition()
-	set {posx, posy} to {-1, -1}
-	
-	tell application "System Events"
-		# set starting position depending on which type of Maschine instance we're using
-		if maschine_app then set {posx, posy} to position of first window of process "Maschine 2"
-		if maschine_logic then set {posx, posy} to position of (first item of (windows of process "Logic Pro X" whose name contains "maschine"))
-		if maschine_live then set {posx, posy} to position of (first item of (windows of process "Live" whose name contains "maschine"))
-	end tell
-	
 	# if no Maschine window was found, return -1	
-	if {posx, posy} = {-1, -1} then return {-1, -1}
+	if (maschine_app or (maschine_plug > 0)) is false then return {-1, -1}
 	
-	set x to firstx + posx
-	set y to firsty + posy
+	set x to firstx + paddingx
+	set y to firsty + paddingy
 	
-	# account for padding of plugin windows in Logic
-	if maschine_logic then
-		set x to x + paddingx_logic
-		set y to y + paddingy_logic
-	end if
+	# if instrument browser is closed
+	if browser_on is false then set x to firstx_no_browser + paddingx
 	
-	
-	# account for padding of plugin windows in Live (smaller title bar)	
-	if maschine_live then
-		set x to x + paddingx_live
-		set y to y + paddingy_live
-	end if
-	
-	# if full screen there's no window header, so subtract 25
-	if posx is 0 and posy is 0 then set y to y - 25
 	return {x, y}
 end getMaschinePatternsPosition
 
@@ -323,65 +655,34 @@ on getMaschinePatternColors(gridx, gridy, offsetx, offsety)
 	set x to x + offsetx * dx
 	set y to y + offsety * dy
 	
-	set sizex to (gridx - 1) * dx + 2 # two extra pixels at the end 
-	set sizey to (gridy - 1) * dy + 2 # to check for color if pattern is selected
+	set sizex to gridx * dx
+	set sizey to gridy * dy
 	
-	try
-		# take screen capture of Maschine patterns
-		set output to do shell script "screencapture -x -R" & x & "," & y & "," & sizex & "," & sizey & " -t bmp $TMPDIR/maschineLP.bmp && xxd -p -l 1 -s 10 $TMPDIR/maschineLP.bmp"
-	end try
 	
-	# get offset to start of pixel array from the BMP file
-	set bmp_offset to fromHex(output)
-	
-	# check if retina then double pixel size of patterns		
-	set dpi to do shell script "xxd -p -l 4 -s 38 $TMPDIR/maschineLP.bmp"
-	if dpi = "25160000" then
-		set pixel_size to 2
-		set bmp_dx to dx * 2
-		set bmp_dy to dy * 2
-	else
-		set pixel_size to 1
-		set bmp_dx to dx
-		set bmp_dy to dy
-	end if
-	
-	# now prepare commands that will extract relevant pixel colors for patterns from the BMP file
-	set commands to ""
-	set bmp_row_bytes to ((gridx - 1) * bmp_dx + pixel_size * 2) * 4
-	repeat with iy from 1 to gridy
-		repeat with ix from 1 to gridx
-			set array_offset to (iy - 1) * bmp_dy * bmp_row_bytes + (ix - 1) * bmp_dx * 4
-			set commands to commands & "xxd -p -l 11 -s " & (bmp_offset + array_offset) & " $TMPDIR/maschineLP.bmp"
-			if (iy < gridy) or (ix < gridx) then set commands to commands & " && "
-		end repeat
-	end repeat
-	
-	try
-		set output to do shell script commands
-	end try
+	screenGrab(x, y, sizex, sizey)
+	set output to pixelStream(1, 1, sizex, sizey, {2, dx - 2, 1, dy - 1})
 	
 	# convert shell script output to a usable form (i.e. rows of rgb colors in dec format)
-	set bgr_colors to paragraphs of output
+	set hex_colors to paragraphs of output
 	set rgb_colors to {}
 	repeat with iy from 1 to gridy
 		set row to {}
 		repeat with ix from 1 to gridx
-			set i to (iy - 1) * gridx + ix
-			set bgr to item i of bgr_colors
+			set i to ((iy - 1) * gridx + ix) * 2 - 1 # check every second pixel
+			set hex to item i of hex_colors
 			
 			# check if this is the currently selected pattern
-			# (i.e. if it has a white outline
-			if text 1 thru 6 of bgr = "ffffff" then
+			# (i.e. if it has a white outline)
+			if text 3 thru 8 of hex = "ffffff" then
 				set selected_pattern to {offsetx + ix, offsety + iy}
 				
 				# shift to next pixel to check for colour
-				set bgr to text 17 thru 22 of bgr
+				set hex to item (i + 1) of hex_colors
 			end if
 			
-			set r to fromHex(text 5 thru 6 of bgr)
-			set g to fromHex(text 3 thru 4 of bgr)
-			set b to fromHex(text 1 thru 2 of bgr)
+			set r to fromHex(text 3 thru 4 of hex)
+			set g to fromHex(text 5 thru 6 of hex)
+			set b to fromHex(text 7 thru 8 of hex)
 			set row to row & {{r, g, b}}
 		end repeat
 		set rgb_colors to rgb_colors & {row}
@@ -391,11 +692,12 @@ on getMaschinePatternColors(gridx, gridy, offsetx, offsety)
 	
 end getMaschinePatternColors
 
+
 # ------------------------------------------------------------
 
 # handler getMaschineScenes()
 # reads the status of first two scenes in Maschine
-# returns two numbers Ð {active_scene, s2_exists}
+# returns two numbers â€“ {active_scene, s2_exists}
 # active_scene is the number of the active scene
 # s2_exists is 1 if Scene 2 exists and 0 if it doesn't
 
@@ -408,58 +710,34 @@ on getMaschineScenes()
 	set x to x + 20
 	set y to y - 30
 	
-	set sizex to 2 * dx # wide enough to scan scenes 1 and 2 Ð we don't care about any further scenes
+	set sizex to 2 * dx # wide enough to scan scenes 1 and 2 â€“ we don't care about any further scenes
 	set sizey to 1 # we only need one row for the scenes
 	
-	try
-		# take screen capture of Maschine scenes - first two scenes only
-		set output to do shell script "screencapture -x -R" & x & "," & y & "," & sizex & "," & sizey & " -t bmp $TMPDIR/maschineLP.bmp && xxd -p -l 1 -s 10 $TMPDIR/maschineLP.bmp"
-	end try
+	screenGrab(x, y, sizex, sizey)
+	set output to pixelStream(1, 1, sizex, sizey, {25, dx - 25, 1, 0})
 	
-	# get offset to start of pixel array from the BMP file
-	set bmp_offset to fromHex(output)
+	set s1_pixels to paragraphs 1 thru 25 of output
+	set s2_pixels to paragraphs 26 thru 50 of output
 	
-	# check if retina then double pixel size of patterns		
-	set dpi to do shell script "xxd -p -l 4 -s 38 $TMPDIR/maschineLP.bmp"
-	if dpi = "25160000" then
-		set pixel_size to 2
-	else
-		set pixel_size to 1
-	end if
-	
-	# pixels for scene 2 start at an offset from the start of the pixel array
-	set scene2_offset to dx * pixel_size * 4
-	
-	# grab 50 pixels (200 bytes) for scene 1, then 50 pixels for scene 2 
-	# note that 50 pixlels is not a lot on retina
-	# tr is used to remove 'new line' from the output of xxd
-	set s1_pixels to do shell script "xxd -p -l 200 -s " & (bmp_offset) & " $TMPDIR/maschineLP.bmp | tr -d '
-'"
-	set s2_pixels to do shell script "xxd -p -l 200 -s " & (bmp_offset + scene2_offset) & " $TMPDIR/maschineLP.bmp | tr -d '
-'"
 	set scenes_pixels to {s1_pixels, s2_pixels}
 	
-	# check which scene is active
+	# check which scene is active â€“Â which one is the brigther grey color
 	repeat with i from 1 to 2
-		set bgr to text 1 thru 6 of item i of scenes_pixels
-		if bgr is "4f4f4f" then set active_scene to i
+		set hex to item 1 of item i of scenes_pixels
+		if hex is "ff4f4f4f" then set active_scene to i
 	end repeat
 	
-	# check if scene 2 exists - scan 50 pixels for colours,
-	# skipping every second pixel as they're the same on retina
-	repeat with i from 1 to 25
-		set bgr to text ((i - 1) * 8 * 2 + 1) thru ((i - 1) * 8 * 2 + 6) of s2_pixels
-		# set bgr to text 17 thru 22 of s2_pixels
-		set r to fromHex(text 5 thru 6 of bgr)
-		set g to fromHex(text 3 thru 4 of bgr)
-		set b to fromHex(text 1 thru 2 of bgr)
-		if (r is not g) or (g is not b) then
-			set s2_exists to 1
-		end if
+	# check if any of the pixels in the scene 2 area are not grey (the scene title is always in color)
+	repeat with hex in items of s2_pixels
+		set r to fromHex(text 3 thru 4 of hex)
+		set g to fromHex(text 5 thru 6 of hex)
+		set b to fromHex(text 7 thru 8 of hex)
+		if (r is not g) or (g is not b) then set s2_exists to 1
 	end repeat
 	
 	return {active_scene, s2_exists}
 end getMaschineScenes
+
 
 # ------------------------------------------------------------
 
@@ -475,43 +753,67 @@ on clickMaschinePattern(patx, paty)
 	# first turn all patterns in that group off
 	# second (if the 'user' pad is being held) create a new pattern (requires double click)
 	set create_new to false
+	set active_pattern to 0
 	if intensity is 0 then
 		# check if another pattern in column is active and deactivate it
 		repeat with iy from 1 to 8
 			set LPcolor to item patx of item iy of mas_pattern_colors
-			if getLPintensity(LPcolor) is active then clickMaschinePattern(patx, iy)
+			if getLPintensity(LPcolor) is active then set active_pattern to iy
+			#			if getLPintensity(LPcolor) is active then clickMaschinePattern(patx, iy)
 		end repeat
 		
 		# if user key is being held and click is on empty pattern, create new pattern
-		if user_pad is true then set create_new to true
+		if drums_pad is true then set create_new to true
 	end if
+	
+	set clicks to ""
 	
 	# find coordinates to click on
 	set {x, y} to getMaschinePatternsPosition()
-	set x to x + (patx - 1) * dx
-	set y to y + (paty - 1) * dy
+	set x to x + maschine_x + (patx - 1) * dx
+	set y to y + maschine_y + (paty - 1) * dy
 	
-	# check if double click required (e.g. when pattern active, but not selected)	
-	if intensity is active and item 1 of selected_pattern is not patx then
-		try
-			# repeating a click twice (c) is faster than double click (dc)
-			# this is better for faster pattern switching
-			do shell script "/usr/local/bin/cliclick c:" & x & "," & y & " c:" & x & "," & y
-		end try
-	else if create_new is true then
-		try
-			# creating a new pattern requires a slower double click
-			do shell script "/usr/local/bin/cliclick dc:" & x & "," & y
-		end try
-	else
-		try
-			do shell script "/usr/local/bin/cliclick c:" & x & "," & y
-		end try
+	
+	# set coordinates to click on - the pattern we're deactivating
+	set {x, y} to getMaschinePatternsPosition()
+	set x to x + maschine_x + (patx - 1) * dx
+	set y to y + maschine_y + (active_pattern - 1) * dy
+	
+	# if we're muting a pattern - check first if column selected or not
+	if intensity is 0 and active_pattern > 0 then
+		if item 1 of selected_pattern is patx then
+			# in the selected column we can deactivate with a single click
+			set clicks to clicks & " c:" & x & "," & y
+		else
+			# in a non-selected column we need a double click to deactivate
+			# we're repeating the 'c' command rather than using 'dc' as this is faster
+			set clicks to clicks & " c:" & x & "," & y & " c:" & x & "," & y
+		end if
 	end if
 	
-	# set selected to current pattern ÐÊexcept if we've turned it off
+	
+	# set coordinates to click on - the pattern we're selecting
+	set {x, y} to getMaschinePatternsPosition()
+	set x to x + maschine_x + (patx - 1) * dx
+	set y to y + maschine_y + (paty - 1) * dy
+	
+	# if creating new pattern, add double click
+	if create_new is true then set clicks to clicks & " dc:" & x & "," & y
+	
+	# if we're activating an inactive pattern then add normal click
+	if intensity is inactive then set clicks to clicks & " c:" & x & "," & y
+	
+	# if we're selected an active pattern that's not currently selected, single click will do
+	if intensity is active and item 1 of selected_pattern is not patx then set clicks to clicks & " c:" & x & "," & y
+	
+	
+	# execute clicks
+	try
+		do shell script "/usr/local/bin/cliclick " & clicks
+	end try
+	
+	# set selected to current pattern
 	set selected_pattern to {patx, paty}
-	if intensity is active then set selected_pattern to {0, 0}
 	
 	return create_new
 	
@@ -527,6 +829,9 @@ end clickMaschinePattern
 on clickMaschineRow(rowy)
 	set commands to "" # we'll store the cliclick mouse click commands here
 	set {basex, basey} to getMaschinePatternsPosition() # starting coordinates for clicks
+	set basex to basex + maschine_x
+	set basey to basey + maschine_y
+	set previously_selected to selected_pattern
 	repeat with ix from 1 to 8
 		# check status of pattern in selected row in column ix (column representing a Maschine group)
 		set pattern_intensity to getLPintensity(item ix of item rowy of mas_pattern_colors)
@@ -567,6 +872,14 @@ on clickMaschineRow(rowy)
 		end if
 	end repeat
 	
+	# return to the group that was selected before (if not there already)
+	if item 1 of selected_pattern is not item 1 of previously_selected then
+		set x to basex + ((item 1 of previously_selected) - 1) * dx
+		set y to basey + (rowy - 1) * dy
+		set commands to commands & " c:" & x & "," & y
+		set item 1 of selected_pattern to item 1 of previously_selected
+	end if
+	
 	# run all the clicks with cliclick
 	try
 		do shell script "/usr/local/bin/cliclick" & commands
@@ -586,6 +899,8 @@ on switchScene(row)
 	set clicks to ""
 	
 	set {basex, basey} to getMaschinePatternsPosition() # starting coordinates for clicks
+	set basex to basex + maschine_x
+	set basey to basey + maschine_y
 	set x to basex
 	set y to basey - dy # above the pattern grid
 	
@@ -608,6 +923,7 @@ on switchScene(row)
 					set x to basex + (ix - 1) * dx
 					set y to basey + (iy - 1) * dy
 					set clicks to clicks & " c:" & x & "," & y
+					set selected_pattern to {ix, iy}
 				end if
 			end repeat
 		end repeat
@@ -615,6 +931,7 @@ on switchScene(row)
 	
 	# if we're activating all existing patterns in the same row
 	if row > 0 then
+		set previously_selected to selected_pattern
 		set iy to row
 		repeat with ix from 1 to 8
 			# only activate if pattern exists
@@ -622,8 +939,17 @@ on switchScene(row)
 				set x to basex + (ix - 1) * dx
 				set y to basey + (iy - 1) * dy
 				set clicks to clicks & " c:" & x & "," & y
+				set selected_pattern to {ix, iy}
 			end if
 		end repeat
+		
+		# return to the group that was selected before (if not there already)
+		if item 1 of selected_pattern is not item 1 of previously_selected then
+			set x to basex + ((item 1 of previously_selected) - 1) * dx
+			set y to basey + (iy - 1) * dy
+			set clicks to clicks & " c:" & x & "," & y
+			set item 1 of selected_pattern to item 1 of previously_selected
+		end if
 	end if
 	
 	# run the clicks
@@ -634,24 +960,50 @@ end switchScene
 
 
 
-# ------------------------------------------------------------
-# ---------------------- MAIN HANDLER --------------
-# ------------------------------------------------------------
+# ----------------------------------------------------------------------------
+# ---------------------- MAIN HANDLER FOR MIDI MESSAGES ----------
+# ----------------------------------------------------------------------------
 
 on runme(message)
+	# if message is not note on or cc change then ignore
+	if {144, 176, 153} does not contain item 1 of message then return {}
+	
 	# check for maschine instances
-	if (maschine_app or maschine_logic or maschine_live) is false then findMaschineInstances()
+	if (maschine_app or (maschine_plug > 0)) is false then findMaschineInstances()
 	
 	# only do anything if the Maschine window is actually open
-	if (maschine_app or maschine_logic or maschine_live) then
+	if (maschine_app or (maschine_plug > 0)) then
 		
-		if legacy then set padNumbers to padNumbersLegacy
 		
-		# ------------ SESSION BUTTON -------------
-		if (item 1 of message = 176) and (item 2 of message = 95) and (item 3 of message > 0) then
-			set message to {}
+		# ------------ AUTO SCENE CHANGE MESSAGE -------------
+		# i.e. if scene change MIDI message received from maschine
+		if item 1 of message is 153 and item 2 of message < 16 then
+			# only refresh if it was recent
+			if sinceLastTime(false) > 500 then
+				
+				# check maschine patterns and light LP pads appropraitely
+				set masColors to getMaschinePatternColors(8, 8, 0, 0)
+				repeat with iy from 1 to 8
+					repeat with ix from 1 to 8
+						set rgb to item ix of item iy of masColors
+						set message to message & setLPcolor(ix, iy, rgbToLPcolor(item 1 of rgb, item 2 of rgb, item 3 of rgb))
+					end repeat
+				end repeat
+			end if
+		end if
+		
+		
+		# ------------ 'SESSION' PAD ON -------------
+		if (item 1 of message = 176) and (item 2 of message = item 5 of ctrlButtons) and (item 3 of message > 0) then
 			
-			findMaschineInstances() # check if anything has changed
+			# start by lighting up the control buttons
+			set session_pad to true
+			set message to showControlButtons()
+			
+			# check if window position has changed
+			findMaschineInstances()
+			getMaschineInnerPosition()
+			
 			set masColors to getMaschinePatternColors(8, 8, 0, 0)
 			repeat with iy from 1 to 8
 				repeat with ix from 1 to 8
@@ -667,35 +1019,80 @@ on runme(message)
 		end if
 		
 		
-		# ------- IF LEGACY MODE THEN REMAP BUTTONS IN RIGHT-MOST ROW ----- 
-		if legacy then
-			if (item 1 of message = 144) and (item 2 of message ³ 100) and (item 3 of message > 0) then
-				set new_value to (8 - ((item 2 of message) - 100)) * 10 + 9
-				set message to {176, new_value, item 3 of message}
-			end if
+		# ------------ 'SESSION' PAD OFF -------------
+		if (item 1 of message = 176) and (item 2 of message = item 5 of ctrlButtons) and (item 3 of message is 0) then
+			set session_pad to false
+			set message to showControlButtons()
 		end if
+		
+		
+		# ------------ 'DRUMS' PAD ON -------------
+		if (item 1 of message = 176) and (item 2 of message = item 6 of ctrlButtons) and (item 3 of message = 127) then
+			set drums_pad to true
+			set message to showControlButtons()
+		end if
+		
+		
+		# ------------ 'DRUMS' PAD OFF -------------
+		if (item 1 of message = 176) and (item 2 of message = item 6 of ctrlButtons) and (item 3 of message = 0) then
+			set drums_pad to false
+			set message to showControlButtons()
+		end if
+		
+		
+		# ------------ 'KEYS' PAD ON -------------
+		if (item 1 of message = 176) and (item 2 of message = item 7 of ctrlButtons) and (item 3 of message = 127) then
+			if keys_pad is false then
+				set keys_pad to true
+			else
+				set keys_pad to false
+			end if
+			set message to showControlButtons()
+		end if
+		
+		
+		# ------------ 'KEYS' PAD OFF -------------
+		if (item 1 of message = 176) and (item 2 of message = item 7 of ctrlButtons) and (item 3 of message = 0) then
+			set message to {} # ignore off message - the keys pad is a toggle button that toggles state on the midi on message
+		end if
+		
+		
+		# ------------ 'USER' PAD ON -------------
+		if (item 1 of message = 176) and (item 2 of message = item 8 of ctrlButtons) and (item 3 of message = 127) then
+			set user_pad to true
+			set message to showControlButtons()
+		end if
+		
+		
+		# ------------ 'USER' PAD OFF -------------
+		if (item 1 of message = 176) and (item 2 of message = item 8 of ctrlButtons) and (item 3 of message = 0) then
+			set user_pad to false
+			set message to showControlButtons()
+		end if
+		
 		
 		# ------------ NOTE ON -------------
 		if (item 1 of message = 144) and (item 3 of message > 0) then
 			set {padx, pady} to getLPpadXY(item 2 of message)
 			set message to {}
 			
-			# switch scenes if the keys pad is pressed Ð but only do it once
-			if keys_pad then
-				switchScene(0)
-				set keys_pad to false
+			# get existing color in selected pad
+			set oldLPcolor to item padx of item pady of mas_pattern_colors
+			set oldIntensity to getLPintensity(oldLPcolor)
+			
+			# switch scenes if the keys pad is pressed 
+			# but only do it if enogh time has elapsed - and if 'user' key is not pressed
+			# also no need to switch if we clicked on a pattern that's already active
+			# (i.e. only click if 'intensity' is not 'active')
+			if keys_pad and user_pad is false and oldIntensity is not active then
+				if sinceLastTime(true) > 500 then switchScene(0) # 500 milliseconds
 			end if
 			
 			set is_new_pattern to clickMaschinePattern(padx, pady)
 			
-			# toggle pad color for selected pattern
-			set oldLPcolor to item padx of item pady of mas_pattern_colors
-			set oldIntensity to getLPintensity(oldLPcolor)
+			# light up pad color for selected pattern
 			if oldIntensity = inactive then
 				set message to message & setLPcolor(padx, pady, setLPintensity(oldLPcolor, active))
-			end if
-			if oldIntensity = active then
-				set message to message & setLPcolor(padx, pady, setLPintensity(oldLPcolor, inactive))
 			end if
 			
 			# set pad colors for other patterns in column to inactive
@@ -716,30 +1113,12 @@ on runme(message)
 			return message
 		end if
 		
+		
 		# ------------ NOTE OFF -------------
 		if (item 1 of message = 144) and (item 3 of message = 0) then
 			set message to {}
 		end if
 		
-		# ------------ KEYS PAD ON -------------
-		if (item 1 of message = 176) and (item 2 of message = 97) and (item 3 of message = 127) then
-			set keys_pad to true
-		end if
-		
-		# ------------ KEYS PAD OFF -------------
-		if (item 1 of message = 176) and (item 2 of message = 97) and (item 3 of message = 0) then
-			set keys_pad to false
-		end if
-		
-		# ------------ USER PAD ON -------------
-		if (item 1 of message = 176) and (item 2 of message = 98) and (item 3 of message = 127) then
-			set user_pad to true
-		end if
-		
-		# ------------ USER PAD OFF -------------
-		if (item 1 of message = 176) and (item 2 of message = 98) and (item 3 of message = 0) then
-			set user_pad to false
-		end if
 		
 		# ------------ SCENE KEYS -------------
 		# when scene key is pressed, activate all patterns on that row
@@ -749,7 +1128,7 @@ on runme(message)
 			
 			if keys_pad then
 				# use the switch scenes function if the keys pad is pressed
-				switchScene(pady)
+				if sinceLastTime(true) > 500 then switchScene(pady) # 500 milliseconds
 			else
 				# otherwise use 'clickmaschinerow' to activate the right patterns in existing scene
 				clickMaschineRow(pady)
@@ -766,9 +1145,6 @@ on runme(message)
 		end if
 		
 		return message
-		
-		# for debugging use
-		# do shell script "echo " & intensity & " >> $TMPDIR/mas_temp.txt"
 		
 	end if
 end runme
