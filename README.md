@@ -16,9 +16,9 @@ You can use a Maschine MK3 or a different controller alongside this setup, but t
 ### 1. Install MidiPipe and Cliclick
 
 Start by installing [MidiPipe](http://www.subtlesoft.square7.net/MidiPipe.html) and [Cliclick](https://github.com/BlueM/cliclick), 
-following instructions on their websites. The expected location for cliclick when installed on your drive is in '/usr/local/bin/'
+following instructions on their websites. 
 
-Note: I prefer using Cliclick version 3.3. rather than the latest one as it seems marginally faster when executing multiple clicks.
+Note: The expected location for cliclick when installed on your drive is in your **Applications folder**, so just copy it there. I also prefer using Cliclick version 3.3. rather than the latest one as it seems marginally faster when executing multiple clicks.
 
 ### 2. Connect your LaunchPad and switch it to 'programmer' mode
 
