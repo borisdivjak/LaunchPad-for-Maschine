@@ -5,7 +5,7 @@ but without having to own either Ableton Live or Maschine Jam.
 
 Click on the image to watch a demo:
 
-<a href="https://youtu.be/KDaLBvbOQ3k" target="_blank"><img src="https://img.youtube.com/vi/KDaLBvbOQ3k/maxresdefault.jpg" width="70%"></a>
+[<img src="https://img.youtube.com/vi/KDaLBvbOQ3k/maxresdefault.jpg" width="70%">](https://youtu.be/KDaLBvbOQ3k)
 
 # Requirements
 - Maschine 2 software (on a MacOS laptop)
