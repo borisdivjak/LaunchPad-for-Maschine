@@ -129,3 +129,8 @@ It should be possible to modify the script to work with the Mk2 series of Launch
 - You'll need to make sure that the patterns are visible on your screen
 - You need to keep Maschine (the software) in 'ideas' mode
 - Only works up to 8 patterns in each of the first 8 instrument groups
+
+
+# Diclaimer
+
+This script is provided as is and I have no particular plans to keep it updated with future changes to Maschine and other related components. I also take no responsibility for any way you might use it, so proceed at your own discretion. I've developed this for my own personal use and I'm only sharing it here because I thought other people could probably benefit from it.
