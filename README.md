@@ -1,5 +1,5 @@
 # LaunchPad for Maschine
-A MidiPipe AppleScript that enables Maschine 2 users to use a LaunchPad Mini MK3 to control patterns in Maschine.
+This is a MidiPipe AppleScript that enables Maschine 2 users to use a LaunchPad Mini MK3 to control patterns in Maschine.
 This enables a workflow familiar to those using LaunchPad to launch clips and scenes in Ableton Live, or those using Maschine Jam,
 but without having to own either Ableton Live or Maschine Jam.
 
