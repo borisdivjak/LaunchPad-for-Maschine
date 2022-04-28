@@ -3,6 +3,10 @@ This is a MidiPipe AppleScript that enables Maschine 2 users to use a LaunchPad 
 This enables a workflow familiar to those using LaunchPad to launch clips and scenes in Ableton Live, or those using Maschine Jam,
 but without having to own either Ableton Live or Maschine Jam.
 
+Click on the image to watch a demo:
+
+<a href="https://youtu.be/KDaLBvbOQ3k" target="_blank"><img src="https://img.youtube.com/vi/KDaLBvbOQ3k/maxresdefault.jpg" width="70%"></a>
+
 # Requirements
 - Maschine 2 software (on a MacOS laptop)
 - LaunchPad Mini MK3 (probably works with other LaunchPads from MK3 and MK2 series, but not confirmed)
