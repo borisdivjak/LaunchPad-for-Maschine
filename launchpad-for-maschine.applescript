@@ -19,6 +19,8 @@
 use framework "Foundation"
 use scripting additions
 
+property cliclick : "/Applications/cliclick"
+
 property firstx : 356 # 'x' where patterns start in Maschine
 property firstx_no_browser : 30 # with instrument browser closed
 property firsty : 80 # 'y' where patterns start in Maschine
@@ -539,7 +541,7 @@ on getMaschineInnerPosition()
 			
 			# if full-screen - then the starting edge is at the very top
 			if (maschine_x = 0) and (maschine_y = 0) then set v_slice_start to 1
-
+			
 		else # if maschine plugin
 			set v_slice_start to 10
 			set v_slice_height to 120
@@ -809,7 +811,7 @@ on clickMaschinePattern(patx, paty)
 	
 	# execute clicks
 	try
-		do shell script "/usr/local/bin/cliclick " & clicks
+		do shell script cliclick & " " & clicks
 	end try
 	
 	# set selected to current pattern
@@ -882,7 +884,7 @@ on clickMaschineRow(rowy)
 	
 	# run all the clicks with cliclick
 	try
-		do shell script "/usr/local/bin/cliclick" & commands
+		do shell script cliclick & commands
 	end try
 	
 end clickMaschineRow
@@ -954,7 +956,7 @@ on switchScene(row)
 	
 	# run the clicks
 	try
-		do shell script "/usr/local/bin/cliclick " & clicks
+		do shell script cliclick & " " & clicks
 	end try
 end switchScene
 
