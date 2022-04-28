@@ -49,10 +49,33 @@ and all the pads on your LaunchPad should go dark.
 The script works well with the standalone app, but should also work when using Maschine as a plug-in in Logic Pro or Ableton Live. 
 Additional hosts could be supported with minimal tweaks to the code.
 
+# First use (allowing the script to do what it needs)
+
+Before you can use the script you'll need to allow it to access certain functions of your computer:
+- MidiPipe needs access to 'system events'
+- MidiPipe needs access to 'accessibility' controls
+- MidiPipe needs access to 'screen recording' controls
+- Cliclick needs to be allowed to run (as it's unsigned software)
+
+The above permissions are needed so that the script can get access to your mouse (it moves the mouse around and performs click to activate patterns in Maschine) and to take screenshots of you Maschine patterns (so it knows which patterns are active). I realise all these warnings may seem daunting, but it's really nothing to be worried about.
+
+
+1. Start Maschine and make sure it's in ideas view and make sure the LaunchPad is in 'programmer' mode
+2. Press 'session' on the LaunchPad
+3. A screen should pop-up asking access to 'system events' – click 'ok'
+4. Next, a screen should pop-up requesting access to 'accessibility' features – click 'Open system preferences' and enable access for MidiPipe
+5. Next, MidiPipe will request to record the screen – click 'Open system preferences' and enable access for MidiPipe
+6. Press one of the pattern pads on the LaunchPad
+7. A screen should pop-up saying the cliclick cannot be opened, as the developer is not verified
+8. Open the 'System preferences' app and go to 'Security & Privacy > General'. There should be a note at the bottom saying 'cliclick was blocked from use ...' with a button 'Allow Anyway' next to it. Click the 'Allow Anyway' button
+9. When you try using the LaunchPad again, another warning will pop-up about 'cliclick' – this time click 'Open'
+
+
+
 # How to use it
 
 In Maschine, make sure that you have the 'ideas' view open and that your list of patterns is clearly visible on the screen.
-When using the plug-in version, swithch to 'medium' or 'large' view (in the Maschine plugin, select the dropdown and then View > Medium).
+When using the plug-in version, switch to 'medium' or 'large' view (in the Maschine plugin, select the dropdown and then View > Medium).
 
 Make sure your LaunchPad is in "Programmer" mode – see instructions above.
 
@@ -82,6 +105,13 @@ The scene selection buttons are the ones in the right-most column on your Launch
 ### Sync pattern changes to your beat by toggling the 'keys' button
 Press the keys button once to turn beat sync on (the button starts to blink) then again to turn it off. When in beat sync mode, the patterns will change according to the 'perform grid' setting in Maschine. You can change this setting to '1 bar' if you want your patterns to change at the end of a sigle bar, or 'scene' if you prefer them to change when the entire pattern/scene has played out.
 
+### Enable MIDI change for Scenes in Maschine to update the LaunchPad with each scene change
+
+When you change the scenes within the Maschine software or using your Maschine controller, it's possible to update the patterns on your LaunchPad with each scene change. To enable this, you need to enable 'MIDI change' for Scenes in your Maschine software.
+
+1. In Maschine, go to 'Edit > MIDI change'
+2. Under 'Scene' change trigger to 'MIDI note'
+3. Leave 'Source' as 'None' and change channel to 10
 
 
 # Using this script with other LaunchPads
